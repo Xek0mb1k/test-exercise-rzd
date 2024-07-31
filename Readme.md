@@ -42,6 +42,19 @@ sudo docker run -d \
 **3. Создать один дашборд в графане, который будет мониторить состояние докер контейнеров на хосте**
 ![Pasted image 20240731041056](https://github.com/user-attachments/assets/3620ffd7-73e0-4471-8496-b640107a65ab)
 
+## Save grafana container
+
+```bash
+docker stop 9a07
+docker commit 9a07 grafana_completed
+docker commit 9a07 grafana_completed
+docker save -o grafana_completed.tar grafana_completed
+```
+
+**Load image**
+docker load -i grafana_completed.tar
+
+
 
 **4. Настроить мониторинг контейнеров на хосте (по факту на дашборде будет только два контейнера - один графана, второй ... нужен для мониторинга)**
 
