@@ -1,0 +1,112 @@
+- name: Install and configure Prometheus
+  hosts: all
+  become: yes
+  vars:
+    prometheus_version: "2.53.1"
+
+  tasks:
+    - name: Install necessary dependencies
+      dnf:
+        name:
+          - wget
+          - curl
+        state: present
+
+    - name: Download the latest version of Prometheus
+      get_url:
+        url: https://github.com/prometheus/prometheus/releases/latest/download/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz
+        dest: /tmp/prometheus.tar.gz
+
+    - name: Extract Prometheus
+      unarchive:
+        src: /tmp/prometheus.tar.gz
+        dest: /usr/local/bin/
+        remote_src: yes
+
+    - name: Create a user for Prometheus
+      user:
+        name: prometheus
+        shell: /usr/sbin/nologin
+        system: yes
+
+    - name: Create necessary directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: prometheus
+        group: prometheus
+        mode: '0755'
+      loop:
+        - /etc/prometheus
+        - /var/lib/prometheus
+
+    - name: Copy Prometheus configuration
+      copy:
+        src: /usr/local/bin/prometheus-{{ prometheus_version }}.linux-amd64/prometheus.yml
+        dest: /etc/prometheus/prometheus.yml
+        owner: prometheus
+        group: prometheus
+        mode: '0644'
+
+    - name: Update prometheus.yml
+      copy:
+        dest: /etc/prometheus/prometheus.yml
+        content: |
+          # my global config
+          global:
+            scrape_interval: 15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+            evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.
+            # scrape_timeout is set to the global default (10s).
+
+            # Attach these labels to any time series or alerts when communicating with
+            # external systems (federation, remote storage, Alertmanager).
+            external_labels:
+              monitor: "codelab-monitor"
+
+          # Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+          rule_files:
+            # - "first.rules"
+            # - "second.rules"
+
+          # A scrape configuration containing exactly one endpoint to scrape:
+          # Here it's Prometheus itself.
+          scrape_configs:
+            # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+            - job_name: prometheus
+
+              # metrics_path defaults to '/metrics'
+              # scheme defaults to 'http'.
+
+              static_configs:
+                - targets: ["localhost:9090"]
+
+            - job_name: cAdvisor
+                # metrics_path defaults to '/docker/'
+                # scheme defaults to 'http'.
+
+              static_configs:
+                - targets: ["localhost:8080"]
+
+    - name: Create systemd unit file for Prometheus
+      copy:
+        content: |
+          [Unit]
+          Description=Prometheus
+          After=network.target
+
+          [Service]
+          User=prometheus
+          Group=prometheus
+          ExecStart=/usr/local/bin/prometheus --config.file /etc/prometheus/prometheus.yml --storage.tsdb.path /var/lib/prometheus/
+
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+        dest: /etc/systemd/system/prometheus.service
+
+    - name: Start and enable Prometheus service
+      systemd:
+        name: prometheus
+        enabled: yes
+        state: started
