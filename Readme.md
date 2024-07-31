@@ -51,9 +51,13 @@ docker commit 9a07 grafana_completed
 docker save -o grafana_completed.tar grafana_completed
 ```
 
-**Load image**
-docker load -i grafana_completed.tar
 
+**Load image**
+```bash
+docker load -i grafana_completed.tar
+```
+Link to image
+https://dropmefiles.com/4jnKo
 
 
 **4. Настроить мониторинг контейнеров на хосте (по факту на дашборде будет только два контейнера - один графана, второй ... нужен для мониторинга)**
